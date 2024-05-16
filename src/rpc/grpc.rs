@@ -93,6 +93,7 @@ impl Rpc for Grpc {
         let tx = res.into_inner().tx_response.ok_or(Error::NoneTxResponse)?;
 
         Ok(TxAsyncResponse {
+            codespace: tx.codespace,
             code: Code::from(tx.code),
             data: Bytes::from(tx.data.encode_to_vec()),
             log: tx.raw_log,
@@ -114,6 +115,7 @@ impl Rpc for Grpc {
         let tx = res.into_inner().tx_response.ok_or(Error::NoneTxResponse)?;
 
         Ok(TxSyncResponse {
+            codespace: tx.codespace,
             code: Code::from(tx.code),
             data: Bytes::from(tx.data.encode_to_vec()),
             log: tx.raw_log,
