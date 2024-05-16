@@ -9,7 +9,7 @@ edition = "2021"
 cosmrs = { version = "0.16.0", features = ["rpc", "grpc"] }
 tonic = { version = "0.11.0", features = ["transport", "prost"] }
 bip32 = { version = "0.5.1", features = ["bip39"] }
-tendermint-rpc = { version = "0.36.0", features = ["websocket-client"] }
+tendermint-rpc = { version = "0.35.0", features = ["websocket-client"] }
 thiserror = "1.0.60"
 hex = "0.4.3"
 bytes = "1.6.0"
@@ -20,4 +20,3 @@ async-trait = "0.1.80"
 [features]
 cosmwasm = ["cosmrs/cosmwasm"]
 osmosis = ["osmosis-std"]
-websocket-client = ["tendermint-rpc/websocket-client"]
