@@ -17,15 +17,11 @@ use crate::signer::Signer;
 #[derive(Debug, Clone)]
 pub struct CosmosClient<T: Rpc + Clone + Send + Sync> {
     /// The chain ID for the Cosmos blockchain.
-    chain_id: Option<String>,
-    /// The signer used for transaction signing.
-    signer: Option<Signer>,
-    /// The account ID associated with the client.
-    account_id: Option<u64>,
-    /// The sequence ID associated with the client.
-    sequence_id: Option<u64>,
+    chain_id: String,
     /// The underlying RPC implementation used by the client.
     rpc: T,
+    /// The signer used for transaction signing.
+    signer: Option<Signer>,
 }
 
 impl CosmosClient<JsonRpc> {
@@ -34,7 +30,7 @@ impl CosmosClient<JsonRpc> {
     /// # Arguments
     ///
     /// * `endpoint` - The endpoint URL for the JSON-RPC server.
-    /// * `chain_id` - The id for the chain.
+    /// * `chain_id` - The chain ID for the Cosmos blockchain.
     ///
     /// # Returns
     ///
@@ -44,10 +40,8 @@ impl CosmosClient<JsonRpc> {
         let rpc = JsonRpc::new(endpoint)?;
         Ok(Self {
             rpc,
-            chain_id: Some(chain_id.to_owned()),
+            chain_id: chain_id.to_owned(),
             signer: None,
-            account_id: None,
-            sequence_id: None,
         })
     }
 }
@@ -58,7 +52,7 @@ impl CosmosClient<Grpc> {
     /// # Arguments
     ///
     /// * `endpoint` - The endpoint URL for the gRPC server.
-    /// * `chain_id` - The id for the chain.
+    /// * `chain_id` - The chain ID for the Cosmos blockchain.
     ///
     /// # Returns
     ///
@@ -67,10 +61,8 @@ impl CosmosClient<Grpc> {
         let rpc = Grpc::new(endpoint).await?;
         Ok(Self {
             rpc,
-            chain_id: Some(chain_id.to_owned()),
+            chain_id: chain_id.to_owned(),
             signer: None,
-            account_id: None,
-            sequence_id: None,
         })
     }
 }
@@ -78,10 +70,8 @@ impl CosmosClient<Grpc> {
 impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
     /// This method associates a signer with the client, providing the necessary information for
     /// transaction signing.
-    pub async fn attach_signer(&mut self, signer: Signer) -> CosmosResult<()> {
+    pub async fn attach_signer(&mut self, signer: Signer) {
         self.signer = Some(signer);
-        self.update_sequence_id().await?;
-        Ok(())
     }
 
     /// Retrieves the currently associated signer.
@@ -104,17 +94,9 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
     /// Returns the simulation response as a CosmosResult.
     pub async fn simulate_tx(&self, body: Body) -> CosmosResult<SimulateResponse> {
         let mut signer = self.signer.clone().ok_or(Error::NoSignerAttached)?;
+        let (account_number, sequence_id) = self.account_sequence_id().await?;
         let tx = signer
-            .sign(
-                self.chain_id
-                    .clone()
-                    .ok_or(Error::NoSignerAttached)?
-                    .as_str(),
-                self.account_id.ok_or(Error::NoSignerAttached)?,
-                self.sequence_id.ok_or(Error::NoSignerAttached)?,
-                100u64,
-                body,
-            )
+            .sign(&self.chain_id, account_number, sequence_id, 100u64, body)
             .await?;
 
         self.rpc.simulate_tx(tx).await
@@ -147,17 +129,9 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
         gas_info.mul_assign(100u64 + u64::from(signer.gas_adjustment_percent));
         gas_info.div_assign(100);
 
+        let (account_number, sequence_id) = self.account_sequence_id().await?;
         signer
-            .sign(
-                self.chain_id
-                    .clone()
-                    .ok_or(Error::NoSignerAttached)?
-                    .as_str(),
-                self.account_id.ok_or(Error::NoSignerAttached)?,
-                self.sequence_id.ok_or(Error::NoSignerAttached)?,
-                gas_info,
-                body,
-            )
+            .sign(&self.chain_id, account_number, sequence_id, gas_info, body)
             .await
     }
 
@@ -170,7 +144,7 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
     /// # Returns
     ///
     /// A `CosmosResult` indicating the success of the operation or an error if any.
-    async fn update_sequence_id(&mut self) -> CosmosResult<()> {
+    async fn account_sequence_id(&self) -> CosmosResult<(u64, u64)> {
         let signer = self.signer.clone().ok_or(Error::NoSignerAttached)?;
 
         let query = QueryAccountRequest {
@@ -188,9 +162,7 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
         match account.type_url.as_str() {
             "/cosmos.auth.v1beta1.BaseAccount" => {
                 let account = BaseAccount::decode(account.value.as_slice())?;
-                self.sequence_id = Some(account.sequence);
-                self.account_id = Some(account.account_number);
-                return Ok(());
+                return Ok((account.account_number, account.sequence));
             }
             "/cosmos.vesting.v1beta1.ContinuousVestingAccount" => {
                 let account = ContinuousVestingAccount::decode(account.value.as_slice())?;
@@ -199,9 +171,7 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
                     .ok_or(Error::NoVestingBaseAccount)?
                     .base_account
                     .ok_or(Error::NoVestingBaseAccount)?;
-                self.sequence_id = Some(account.sequence);
-                self.account_id = Some(account.account_number);
-                return Ok(());
+                return Ok((account.account_number, account.sequence));
             }
             _ => {}
         }
