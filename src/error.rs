@@ -43,4 +43,6 @@ pub enum Error {
     TXPollingTimeout,
     #[error("No base account for vesting wallet")]
     NoVestingBaseAccount,
+    #[error("{0}")]
+    Custom(String),
 }

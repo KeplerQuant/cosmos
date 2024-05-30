@@ -36,7 +36,15 @@ impl<T: Rpc + Clone + Send + Sync> Tx<T> {
 
     /// Broadcasts a transaction synchronously.
     pub async fn broadcast_tx_sync(&self, body: Body) -> CosmosResult<TxSyncResponse> {
-        self.client.broadcast_tx_sync(body).await
+        let sync_resp = self.client.broadcast_tx_sync(body).await?;
+        let poll_resp = self.poll_for_tx(&sync_resp.hash.to_string()).await?;
+
+        let raw_log = poll_resp.tx_response.ok_or(Error::NoneTxResponse)?.raw_log;
+        if raw_log.contains("failed") {
+            return Err(Error::Custom(raw_log));
+        }
+
+        Ok(sync_resp)
     }
 
     /// Broadcasts a transaction asynchronously.
