@@ -34,16 +34,17 @@ impl CosmosClient<JsonRpc> {
     /// # Arguments
     ///
     /// * `endpoint` - The endpoint URL for the JSON-RPC server.
+    /// * `chain_id` - The id for the chain.
     ///
     /// # Returns
     ///
     /// A `CosmosResult` containing the initialized `CosmosClient` if successful, or an error if
     /// the initialization fails.
-    pub fn with_json_rpc(endpoint: &str) -> CosmosResult<CosmosClient<JsonRpc>> {
+    pub fn with_json_rpc(endpoint: &str, chain_id: &str) -> CosmosResult<CosmosClient<JsonRpc>> {
         let rpc = JsonRpc::new(endpoint)?;
         Ok(Self {
             rpc,
-            chain_id: None,
+            chain_id: Some(chain_id.to_owned()),
             signer: None,
             account_id: None,
             sequence_id: None,
@@ -57,15 +58,16 @@ impl CosmosClient<Grpc> {
     /// # Arguments
     ///
     /// * `endpoint` - The endpoint URL for the gRPC server.
+    /// * `chain_id` - The id for the chain.
     ///
     /// # Returns
     ///
     /// A `CosmosClient` initialized with the specified gRPC endpoint.
-    pub async fn with_grpc(endpoint: &str) -> CosmosResult<CosmosClient<Grpc>> {
+    pub async fn with_grpc(endpoint: &str, chain_id: &str) -> CosmosResult<CosmosClient<Grpc>> {
         let rpc = Grpc::new(endpoint).await?;
         Ok(Self {
             rpc,
-            chain_id: None,
+            chain_id: Some(chain_id.to_owned()),
             signer: None,
             account_id: None,
             sequence_id: None,
@@ -76,8 +78,7 @@ impl CosmosClient<Grpc> {
 impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
     /// This method associates a signer with the client, providing the necessary information for
     /// transaction signing.
-    pub async fn attach_signer(&mut self, chain_id: &str, signer: Signer) -> CosmosResult<()> {
-        self.chain_id = Some(chain_id.to_string());
+    pub async fn attach_signer(&mut self, signer: Signer) -> CosmosResult<()> {
         self.signer = Some(signer);
         self.update_sequence_id().await?;
         Ok(())
