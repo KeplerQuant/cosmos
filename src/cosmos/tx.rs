@@ -67,7 +67,7 @@ impl<T: Rpc + Clone + Send + Sync> Tx<T> {
                 return tx;
             }
 
-            sleep(Duration::from_secs(3));
+            sleep(Duration::from_secs(1));
         }
 
         Err(Error::TXPollingTimeout)
