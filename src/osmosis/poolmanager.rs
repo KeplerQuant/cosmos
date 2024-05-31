@@ -1,6 +1,5 @@
 use osmosis_std::types::osmosis::poolmanager::v1beta1::{
-    EstimateSwapExactAmountInRequest, EstimateSwapExactAmountInResponse, PoolRequest, PoolResponse,
-    SpotPriceRequest, SwapAmountInRoute,
+    PoolRequest, PoolResponse, SpotPriceRequest,
 };
 use osmosis_std::types::osmosis::poolmanager::v2::SpotPriceResponse;
 
@@ -43,39 +42,6 @@ impl<T: Rpc + Clone + Send + Sync> PoolManager<T> {
         };
         self.client
             .query("/osmosis.poolmanager.v1beta1.Query/SpotPrice", query)
-            .await
-    }
-
-    /// Estimates the output amount for a given input amount of a specific asset pair.
-    ///
-    /// # Parameters
-    ///
-    /// * `pool_id`: A unique identifier for the liquidity pool.
-    /// * `token_in_amount`: The amount of the input asset.
-    /// * `token_in_denom`: The denomination of the input asset.
-    /// * `routes`: A list of routes for the asset swap.
-    ///
-    /// # Returns
-    ///
-    /// An EstimateSwapExactAmountInResponse containing the estimated output amount for the given input amount.
-    pub async fn estimate_swap_exact_amount_in(
-        &self,
-        pool_id: u64,
-        token_in_amount: f64,
-        token_in_denom: &str,
-        routes: Vec<SwapAmountInRoute>,
-    ) -> CosmosResult<EstimateSwapExactAmountInResponse> {
-        #[allow(deprecated)]
-        let query = EstimateSwapExactAmountInRequest {
-            pool_id,
-            routes,
-            token_in: format!("{}{}", token_in_amount, token_in_denom),
-        };
-        self.client
-            .query(
-                "/osmosis.gamm.v1beta1.Query/EstimateSwapExactAmountIn",
-                query,
-            )
             .await
     }
 
