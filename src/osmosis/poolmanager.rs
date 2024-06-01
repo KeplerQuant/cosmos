@@ -1,10 +1,22 @@
+use cosmrs::proto::prost::Message;
+use osmosis_std::types::osmosis::concentratedliquidity::v1beta1::Pool as ConcentratedAmm;
+use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::CosmWasmPool;
+use osmosis_std::types::osmosis::gamm::v1beta1::Pool as Amm;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::{
     PoolRequest, PoolResponse, SpotPriceRequest,
 };
 use osmosis_std::types::osmosis::poolmanager::v2::SpotPriceResponse;
 
-use crate::error::CosmosResult;
+use crate::error::{CosmosResult, Error};
 use crate::{client::CosmosClient, rpc::types::Rpc};
+
+/// An enumeration representing different types of liquidity pools.
+#[derive(Debug, Clone)]
+pub enum Pool {
+    Amm(Amm),
+    ConcentratedAmm(ConcentratedAmm),
+    CosmWasmPool(CosmWasmPool),
+}
 
 /// A struct representing a client to interact with the Osmosis Pool Manager.
 #[derive(Debug, Clone)]
@@ -54,10 +66,28 @@ impl<T: Rpc + Clone + Send + Sync> PoolManager<T> {
     /// # Returns
     ///
     /// * A CosmosResult containing a PoolResponse with the pool information, or an error if the request failed.
-    pub async fn pool(&self, pool_id: u64) -> CosmosResult<PoolResponse> {
+    pub async fn pool(&self, pool_id: u64) -> CosmosResult<Pool> {
         let query = PoolRequest { pool_id };
-        self.client
+        let resp: PoolResponse = self
+            .client
             .query("/osmosis.poolmanager.v1beta1.Query/Pool", query)
-            .await
+            .await?;
+
+        let pool = resp.pool.ok_or(Error::NotFoundPool)?;
+        match pool.type_url.as_str() {
+            "/osmosis.concentratedliquidity.v1beta1.Pool" => {
+                let pool = ConcentratedAmm::decode(pool.value.as_slice())?;
+                return Ok(Pool::ConcentratedAmm(pool));
+            }
+            "/osmosis.gamm.v1beta1.Pool" => {
+                let pool = Amm::decode(pool.value.as_slice())?;
+                return Ok(Pool::Amm(pool));
+            }
+            "/osmosis.cosmwasmpool.v1beta1.CosmWasmPool" => {
+                let pool = CosmWasmPool::decode(pool.value.as_slice())?;
+                return Ok(Pool::CosmWasmPool(pool));
+            }
+            _ => unimplemented!(),
+        }
     }
 }

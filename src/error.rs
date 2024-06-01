@@ -45,4 +45,8 @@ pub enum Error {
     NoVestingBaseAccount,
     #[error("{0}")]
     Custom(String),
+
+    #[cfg(feature = "osmosis")]
+    #[error("Not found pool")]
+    NotFoundPool,
 }
