@@ -38,10 +38,15 @@ impl<T: Rpc + Clone + Send + Sync> Tx<T> {
     pub async fn broadcast_tx_sync(&self, body: Body) -> CosmosResult<TxSyncResponse> {
         let sync_resp = self.client.broadcast_tx_sync(body).await?;
         let poll_resp = self.poll_for_tx(&sync_resp.hash.to_string()).await?;
+        let tx_resp = poll_resp.tx_response.ok_or(Error::NoneTxResponse)?;
 
-        let raw_log = poll_resp.tx_response.ok_or(Error::NoneTxResponse)?.raw_log;
+        let raw_log = tx_resp.raw_log;
         if raw_log.contains("failed") {
             return Err(Error::Custom(raw_log));
+        }
+
+        if tx_resp.gas_used > tx_resp.gas_wanted {
+            return Err(Error::OutOfGas);
         }
 
         Ok(sync_resp)

@@ -31,6 +31,8 @@ pub enum Error {
     NoSubscription,
     #[error("Cannot simulate TX Gas Fee")]
     CannotSimulateTxGasFee,
+    #[error("Out of gas")]
+    OutOfGas,
     #[error("Account does not exist {address:?}")]
     AccountDoesNotExist { address: String },
     #[error("Rpc errors : {0}")]
