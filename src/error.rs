@@ -29,8 +29,8 @@ pub enum Error {
     NoSignerAttached,
     #[error("No subscription")]
     NoSubscription,
-    #[error("Cannot simulate TX Gas Fee")]
-    CannotSimulateTxGasFee,
+    #[error("Cannot simulate TX Gas")]
+    CannotSimulateTxGas,
     #[error("Out of gas")]
     OutOfGas,
     #[error("Account does not exist {address:?}")]

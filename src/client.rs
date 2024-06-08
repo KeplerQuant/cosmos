@@ -120,7 +120,7 @@ impl<T: Rpc + Clone + Send + Sync> CosmosClient<T> {
     async fn sign_tx(&self, body: Body) -> CosmosResult<Vec<u8>> {
         let simulate_response = self.simulate_tx(body.clone()).await?;
         if simulate_response.gas_info.is_none() {
-            return Err(Error::CannotSimulateTxGasFee);
+            return Err(Error::CannotSimulateTxGas);
         }
 
         let mut signer = self.signer.clone().ok_or(Error::NoSignerAttached)?;
